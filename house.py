@@ -1,10 +1,9 @@
 import pandas as pd
 import numpy as np
 
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import Pipeline
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import Ridge, Lasso
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 df = pd.read_csv("house_prices.csv")
@@ -26,63 +25,55 @@ X_train, X_test, y_train, y_test = train_test_split(
     random_state=42
 )
 
-pipeline = Pipeline([
-    ("scaler", StandardScaler()),
-    ("model", RandomForestRegressor(random_state=42))
-])
+scaler = StandardScaler()
 
-pipeline.fit(X_train, y_train)
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
 
-y_pred = pipeline.predict(X_test)
+ridge_model = Ridge(alpha=1.0)
 
-mae = mean_absolute_error(y_test, y_pred)
-rmse = np.sqrt(mean_squared_error(y_test, y_pred))
-r2 = r2_score(y_test, y_pred)
+ridge_model.fit(X_train, y_train)
 
-print("Before Hyperparameter Tuning")
-print("MAE:", mae)
-print("RMSE:", rmse)
-print("R2 Score:", r2)
+ridge_pred = ridge_model.predict(X_test)
 
-param_grid = {
-    "model__n_estimators": [100, 200, 300],
-    "model__max_depth": [None, 10, 20],
-    "model__min_samples_split": [2, 5],
-    "model__min_samples_leaf": [1, 2]
-}
+ridge_mae = mean_absolute_error(y_test, ridge_pred)
+ridge_rmse = np.sqrt(mean_squared_error(y_test, ridge_pred))
+ridge_r2 = r2_score(y_test, ridge_pred)
 
-grid_search = GridSearchCV(
-    pipeline,
-    param_grid,
-    cv=5,
-    scoring="r2",
-    n_jobs=-1
-)
+print("Ridge Regression")
+print("MAE:", ridge_mae)
+print("RMSE:", ridge_rmse)
+print("R2 Score:", ridge_r2)
 
-grid_search.fit(X_train, y_train)
+lasso_model = Lasso(alpha=1.0, max_iter=10000)
 
-print("Best Parameters:")
-print(grid_search.best_params_)
+lasso_model.fit(X_train, y_train)
 
-print("Best Cross-Validation R2 Score:")
-print(grid_search.best_score_)
+lasso_pred = lasso_model.predict(X_test)
 
-best_model = grid_search.best_estimator_
+lasso_mae = mean_absolute_error(y_test, lasso_pred)
+lasso_rmse = np.sqrt(mean_squared_error(y_test, lasso_pred))
+lasso_r2 = r2_score(y_test, lasso_pred)
 
-y_pred_tuned = best_model.predict(X_test)
+print("Lasso Regression")
+print("MAE:", lasso_mae)
+print("RMSE:", lasso_rmse)
+print("R2 Score:", lasso_r2)
 
-mae_tuned = mean_absolute_error(y_test, y_pred_tuned)
-rmse_tuned = np.sqrt(mean_squared_error(y_test, y_pred_tuned))
-r2_tuned = r2_score(y_test, y_pred_tuned)
+comparison = pd.DataFrame({
+    "Model": ["Ridge Regression", "Lasso Regression"],
+    "MAE": [ridge_mae, lasso_mae],
+    "RMSE": [ridge_rmse, lasso_rmse],
+    "R2 Score": [ridge_r2, lasso_r2]
+})
 
-print("After Hyperparameter Tuning")
-print("MAE:", mae_tuned)
-print("RMSE:", rmse_tuned)
-print("R2 Score:", r2_tuned)
+print("Model Comparison:")
+print(comparison)
 
 results = pd.DataFrame({
     "Actual Price": y_test.values,
-    "Predicted Price": np.round(y_pred_tuned, 2)
+    "Ridge Predicted": np.round(ridge_pred, 2),
+    "Lasso Predicted": np.round(lasso_pred, 2)
 })
 
 print("Prediction Results:")
